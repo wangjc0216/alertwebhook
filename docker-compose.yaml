@@ -1,0 +1,41 @@
+version: '3.1'
+
+services:
+  logwebhook:
+    container_name: logwebhook
+    image: logwebhook:0.1
+    build: ./
+    ports:
+      - 8091:8091
+    environment:
+      - logwebhook_dbname=logwebhook
+      - logwebhook_dbhost=logwebhook-mysql:3306
+      - logwebhook_servport=:8091
+      - logwebhook_dbuser=root
+      - logwebhook_dbpwd=root
+    depends_on:
+      logwebhook-mysql:
+        condition: service_healthy
+    networks:
+      - logwebhook_net
+    command:
+      - sleep 10 && /app/log_webhook
+  logwebhook-mysql:
+    container_name: logwebhook-mysql
+    image: mysql:5.7
+    volumes:
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - logwebhook_net
+    ports:
+    - 6666:3306
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+
+networks:
+  logwebhook_net:
