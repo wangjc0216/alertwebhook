@@ -1,34 +1,32 @@
 version: '3.1'
 
 services:
-  logwebhook:
-    container_name: logwebhook
-    image: logwebhook:0.1
+  alertwebhook:
+    container_name: alertwebhook
+    image: alertwebhook:0.1
     build: ./
     ports:
-      - 8091:8091
+      - 5001:5001
     environment:
-      - logwebhook_dbname=logwebhook
-      - logwebhook_dbhost=logwebhook-mysql:3306
-      - logwebhook_servport=:8091
-      - logwebhook_dbuser=root
-      - logwebhook_dbpwd=root
+      - alertwebhook_dbname=alertwebhook
+      - alertwebhook_dbhost=alertwebhook-mysql:3306
+      - alertwebhook_servport=:5001
+      - alertwebhook_dbuser=root
+      - alertwebhook_dbpwd=root
     depends_on:
-      logwebhook-mysql:
+      alertwebhook-mysql:
         condition: service_healthy
     networks:
-      - logwebhook_net
-    command:
-      - sleep 10 && /app/log_webhook
-  logwebhook-mysql:
-    container_name: logwebhook-mysql
+      - alertwebhook_net
+  alertwebhook-mysql:
+    container_name: alertwebhook-mysql
     image: mysql:5.7
     volumes:
       - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
     environment:
       - MYSQL_ROOT_PASSWORD=root
     networks:
-      - logwebhook_net
+      - alertwebhook_net
     ports:
     - 6666:3306
     healthcheck:
@@ -38,4 +36,4 @@ services:
 
 
 networks:
-  logwebhook_net:
+  alertwebhook_net:

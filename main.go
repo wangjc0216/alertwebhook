@@ -29,13 +29,13 @@ var (
 func init() {
 	var err error
 	//如 testdb
-	DBNAME = os.Getenv("logwebhook_dbname")
+	DBNAME = os.Getenv("alertwebhook_dbname")
 	//如 localhost:6666
-	DBHOST = os.Getenv("logwebhook_dbhost")
-	DBUSER = os.Getenv("logwebhook_dbuser")
-	DBPWD = os.Getenv("logwebhook_dbpwd")
-	SERVPPORT = os.Getenv("logwebhook_servport")
-	DEBUGFLAG = os.Getenv("logwebhook_debugflag")
+	DBHOST = os.Getenv("alertwebhook_dbhost")
+	DBUSER = os.Getenv("alertwebhook_dbuser")
+	DBPWD = os.Getenv("alertwebhook_dbpwd")
+	SERVPPORT = os.Getenv("alertwebhook_servport")
+	DEBUGFLAG = os.Getenv("alertwebhook_debugflag")
 	if DEBUGFLAG == "" {
 		DEBUGFLAG = "debug"
 	}
@@ -78,6 +78,7 @@ func main() {
 type AlertLog struct {
 	Id         int       `json:"id" gorm:"id"`
 	Alertname  string    `json:"alertname" gorm:"alertname"`
+	Name       string    `json:"name" gorm:"name"`
 	Count      int       `json:"count" gorm:"count"`
 	Status     string    `json:"status" gorm:"status"`
 	UpdateTime time.Time `json:"update_time" gorm:"update_time"`
@@ -95,29 +96,35 @@ type AlertLogMap struct {
 	//告警所在序列号(id)
 	serialMap map[string]int
 }
+type AssemblyStr string
 
-func (alertLog *AlertLogMap) IfExists(alertname string) (bool, int) {
-	alertLog.Lock()
-	defer alertLog.Unlock()
-	return alertLog.existedMap[alertname], alertLog.serialMap[alertname]
+func AssemblyName(alertname, name string) AssemblyStr {
+	return AssemblyStr(fmt.Sprintf("%s_%s", alertname, name))
 }
 
-func (alertLog *AlertLogMap) AddAlertflag(alertname string) {
+func (alertLog *AlertLogMap) IfExists(alertname AssemblyStr) (bool, int) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
-	alertLog.existedMap[alertname] = true
-}
-func (alertLog *AlertLogMap) AddAlertserial(alertname string, id int) {
-	alertLog.Lock()
-	defer alertLog.Unlock()
-	alertLog.serialMap[alertname] = id
+	return alertLog.existedMap[string(alertname)], alertLog.serialMap[string(alertname)]
 }
 
-func (alertLog *AlertLogMap) DeleteAlert(alertname string) {
+func (alertLog *AlertLogMap) AddAlertflag(alertname AssemblyStr) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
-	delete(alertLog.existedMap, alertname)
-	delete(alertLog.serialMap, alertname)
+	alertLog.existedMap[string(alertname)] = true
+}
+func (alertLog *AlertLogMap) AddAlertserial(alertname AssemblyStr, id int) {
+	alertLog.Lock()
+	defer alertLog.Unlock()
+	alertLog.serialMap[string(alertname)] = id
+}
+
+func (alertLog *AlertLogMap) DeleteAlert(alertname AssemblyStr) {
+	alertLog.Lock()
+	defer alertLog.Unlock()
+
+	delete(alertLog.existedMap, string(alertname))
+	delete(alertLog.serialMap, string(alertname))
 }
 
 var alertMap AlertLogMap
@@ -134,6 +141,7 @@ type alertInfo struct {
 		Labels struct {
 			Alertname string `json:"alertname"`
 			Name      string `json:"name"`
+			Instance  string `json:"instance"`
 		} `json:"labels"`
 	} `json:"alerts"`
 }
@@ -154,39 +162,50 @@ func webhookHandle(w http.ResponseWriter, req *http.Request) {
 		fmt.Println("err json:", err)
 		return
 	}
-	switch alert.Status {
-	case "resolved":
-		handleResolved(alert.CommonLabels.Alertname)
-	case "firing":
-		handleFiring(alert.CommonLabels.Alertname)
+	for _, subAlert := range alert.Alerts {
+		//针对没有name label的告警信息，如果没有name字段，使用instance来代替
+		var descContent string
+		if subAlert.Labels.Name != "" {
+			descContent = subAlert.Labels.Name
+		} else {
+			descContent = subAlert.Labels.Instance
+		}
+
+		switch subAlert.Status {
+		case "resolved":
+			handleResolved(subAlert.Labels.Alertname, descContent)
+		case "firing":
+			handleFiring(subAlert.Labels.Alertname, descContent)
+		}
 	}
 
 }
-func handleResolved(alertname string) {
-	exist, serialNum := alertMap.IfExists(alertname)
+func handleResolved(alertname, name string) {
+	exist, serialNum := alertMap.IfExists(AssemblyName(alertname, name))
 	if exist {
 		db.Model(&AlertLog{}).Where("id = ?", serialNum).Updates(map[string]interface{}{
 			"update_time": time.Now(),
 			"status":      "resolved",
 		})
 	}
-	alertMap.DeleteAlert(alertname)
+	alertMap.DeleteAlert(AssemblyName(alertname, name))
 }
-func handleFiring(alertname string) {
-	exist, serialNum := alertMap.IfExists(alertname)
+func handleFiring(alertname, name string) {
+	exist, serialNum := alertMap.IfExists(AssemblyName(alertname, name))
 	var alert AlertLog
 	//如果不存在，那么新增
 	if !exist {
-		alertMap.AddAlertflag(alertname)
+		alertMap.AddAlertflag(AssemblyName(alertname, name))
 		alert = AlertLog{
 			Alertname:  alertname,
+			Name:       name,
 			Count:      1,
 			Status:     "firing",
 			UpdateTime: time.Now(),
 			CreateTime: time.Now(),
 		}
 		db.Create(&alert)
-		alertMap.AddAlertserial(alertname, alert.Id)
+		alertMap.AddAlertserial(AssemblyName(alertname, name), alert.Id)
 	} else {
 		db.First(&alert, serialNum)
 		db.Model(&AlertLog{}).Where("id = ?", serialNum).Updates(map[string]interface{}{
