@@ -1,0 +1,73 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "rD6O1FRhmhGR0+tGc1hh3fsiM04=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "f6dcc3d870a826fb4212f2f124acd2e4658632c5",
+			"revisionTime": "2020-11-27T13:54:36Z"
+		},
+		{
+			"checksumSHA1": "Vu3GH6ZoiZ11ck7Fsv4FAveY4cw=",
+			"path": "github.com/jinzhu/inflection",
+			"revision": "098f377e9000012db0152f7a8d25b23ddfd21480",
+			"revisionTime": "2020-10-25T04:15:59Z"
+		},
+		{
+			"checksumSHA1": "/bW8AnbucyWz9k9d/slrmKIe8fY=",
+			"path": "github.com/jinzhu/now",
+			"revision": "4d745f0c387c1e37c21cf1250cb37c2355607b55",
+			"revisionTime": "2020-10-26T03:57:52Z"
+		},
+		{
+			"checksumSHA1": "0KeIMk0rIQbZaZCt6hEF39C8Q28=",
+			"path": "gorm.io/driver/mysql",
+			"revision": "ae5fd10184f66aeb7938e14880f15b9402cf00fd",
+			"revisionTime": "2020-12-06T01:46:09Z"
+		},
+		{
+			"checksumSHA1": "V+MossTTmUMWK/CZgIQuToNXcHk=",
+			"path": "gorm.io/gorm",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "VeQKosmv+fDsBJmjzdhmUHvevPs=",
+			"path": "gorm.io/gorm/callbacks",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "PUEMLwSPO6CTqA4tHY1kfKt0YgM=",
+			"path": "gorm.io/gorm/clause",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "dvvTeX6ysRL82lyPjUztoMkjKIY=",
+			"path": "gorm.io/gorm/logger",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "JjKqVo+5mG80dUnWgNzgI+EuIiI=",
+			"path": "gorm.io/gorm/migrator",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "fZpz8abHIbF4C6eP7T1cMiT61kA=",
+			"path": "gorm.io/gorm/schema",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		},
+		{
+			"checksumSHA1": "qN0rKYV/CTKeiwXJiKNIiQtc9Zc=",
+			"path": "gorm.io/gorm/utils",
+			"revision": "e1952924e2a844eca52e5030f7b46b78de6ec135",
+			"revisionTime": "2020-12-07T02:31:06Z"
+		}
+	],
+	"rootPath": "lc/alertwebhook"
+}
