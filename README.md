@@ -34,5 +34,6 @@ docker-compose up -d
 
 在prometheus和grafana可以设置告警规则，当metrics指标达到告警阈值的时候，服务端会发出告警信息到Alertmanager。
 Alertmanager是一个管理告警信息的服务，有对告警信息执行静默、抑制等功能，也可以通过Email、webhook等方式发送告警信息。
+
 alertwebhook是一个简单的web服务，通过对AlertManager发送过来的告警信息进行对应数据库的写入和更新实现。
 
