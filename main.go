@@ -76,13 +76,14 @@ func main() {
 }
 
 type AlertLog struct {
-	Id         int       `json:"id" gorm:"id"`
-	Alertname  string    `json:"alertname" gorm:"alertname"`
-	Name       string    `json:"name" gorm:"name"`
-	Count      int       `json:"count" gorm:"count"`
-	Status     string    `json:"status" gorm:"status"`
-	UpdateTime time.Time `json:"update_time" gorm:"update_time"`
-	CreateTime time.Time `json:"create_time" gorm:"create_time"`
+	Id          int       `json:"id" gorm:"id"`
+	Alertname   string    `json:"alertname" gorm:"alertname"`
+	Name        string    `json:"name" gorm:"name"`
+	Fingerprint string    `json:"fingerprint" gorm:"fingerprint"`
+	Count       int       `json:"count" gorm:"count"`
+	Status      string    `json:"status" gorm:"status"`
+	UpdateTime  time.Time `json:"update_time" gorm:"update_time"`
+	CreateTime  time.Time `json:"create_time" gorm:"create_time"`
 }
 
 func (AlertLog) TableName() string {
@@ -96,35 +97,30 @@ type AlertLogMap struct {
 	//告警所在序列号(id)
 	serialMap map[string]int
 }
-type AssemblyStr string
 
-func AssemblyName(alertname, name string) AssemblyStr {
-	return AssemblyStr(fmt.Sprintf("%s_%s", alertname, name))
-}
-
-func (alertLog *AlertLogMap) IfExists(alertname AssemblyStr) (bool, int) {
+func (alertLog *AlertLogMap) IfExists(fingerPrint string) (bool, int) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
-	return alertLog.existedMap[string(alertname)], alertLog.serialMap[string(alertname)]
+	return alertLog.existedMap[fingerPrint], alertLog.serialMap[fingerPrint]
 }
 
-func (alertLog *AlertLogMap) AddAlertflag(alertname AssemblyStr) {
+func (alertLog *AlertLogMap) AddAlertflag(fingerPrint string) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
-	alertLog.existedMap[string(alertname)] = true
+	alertLog.existedMap[fingerPrint] = true
 }
-func (alertLog *AlertLogMap) AddAlertserial(alertname AssemblyStr, id int) {
+func (alertLog *AlertLogMap) AddAlertserial(fingerPrint string, id int) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
-	alertLog.serialMap[string(alertname)] = id
+	alertLog.serialMap[fingerPrint] = id
 }
 
-func (alertLog *AlertLogMap) DeleteAlert(alertname AssemblyStr) {
+func (alertLog *AlertLogMap) DeleteAlert(fingerPrint string) {
 	alertLog.Lock()
 	defer alertLog.Unlock()
 
-	delete(alertLog.existedMap, string(alertname))
-	delete(alertLog.serialMap, string(alertname))
+	delete(alertLog.existedMap, fingerPrint)
+	delete(alertLog.serialMap, fingerPrint)
 }
 
 var alertMap AlertLogMap
@@ -143,6 +139,7 @@ type alertInfo struct {
 			Name      string `json:"name"`
 			Instance  string `json:"instance"`
 		} `json:"labels"`
+		FingerPrint string `json:"fingerprint"`
 	} `json:"alerts"`
 }
 
@@ -173,39 +170,40 @@ func webhookHandle(w http.ResponseWriter, req *http.Request) {
 
 		switch subAlert.Status {
 		case "resolved":
-			handleResolved(subAlert.Labels.Alertname, descContent)
+			handleResolved(subAlert.Labels.Alertname, descContent, subAlert.FingerPrint)
 		case "firing":
-			handleFiring(subAlert.Labels.Alertname, descContent)
+			handleFiring(subAlert.Labels.Alertname, descContent, subAlert.FingerPrint)
 		}
 	}
 
 }
-func handleResolved(alertname, name string) {
-	exist, serialNum := alertMap.IfExists(AssemblyName(alertname, name))
+func handleResolved(alertname, name, fingerPrint string) {
+	exist, serialNum := alertMap.IfExists(fingerPrint)
 	if exist {
 		db.Model(&AlertLog{}).Where("id = ?", serialNum).Updates(map[string]interface{}{
 			"update_time": time.Now(),
 			"status":      "resolved",
 		})
 	}
-	alertMap.DeleteAlert(AssemblyName(alertname, name))
+	alertMap.DeleteAlert(fingerPrint)
 }
-func handleFiring(alertname, name string) {
-	exist, serialNum := alertMap.IfExists(AssemblyName(alertname, name))
+func handleFiring(alertname, name, fingerPrint string) {
+	exist, serialNum := alertMap.IfExists(fingerPrint)
 	var alert AlertLog
 	//如果不存在，那么新增
 	if !exist {
-		alertMap.AddAlertflag(AssemblyName(alertname, name))
+		alertMap.AddAlertflag(fingerPrint)
 		alert = AlertLog{
-			Alertname:  alertname,
-			Name:       name,
-			Count:      1,
-			Status:     "firing",
-			UpdateTime: time.Now(),
-			CreateTime: time.Now(),
+			Alertname:   alertname,
+			Name:        name,
+			Fingerprint: fingerPrint,
+			Count:       1,
+			Status:      "firing",
+			UpdateTime:  time.Now(),
+			CreateTime:  time.Now(),
 		}
 		db.Create(&alert)
-		alertMap.AddAlertserial(AssemblyName(alertname, name), alert.Id)
+		alertMap.AddAlertserial(fingerPrint, alert.Id)
 	} else {
 		db.First(&alert, serialNum)
 		db.Model(&AlertLog{}).Where("id = ?", serialNum).Updates(map[string]interface{}{
