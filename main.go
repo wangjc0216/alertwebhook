@@ -135,9 +135,10 @@ type alertInfo struct {
 		//resolved firing
 		Status string `json:"status"`
 		Labels struct {
-			Alertname string `json:"alertname"`
-			Name      string `json:"name"`
-			Instance  string `json:"instance"`
+			Alertname          string `json:"alertname"`
+			Name               string `json:"name"`
+			MdcTxcClassKeyword string `json:"mdc_txnClass_keyword"`
+			Instance           string `json:"instance"`
 		} `json:"labels"`
 		FingerPrint string `json:"fingerprint"`
 	} `json:"alerts"`
@@ -164,8 +165,10 @@ func webhookHandle(w http.ResponseWriter, req *http.Request) {
 		var descContent string
 		if subAlert.Labels.Name != "" {
 			descContent = subAlert.Labels.Name
-		} else {
+		} else if subAlert.Labels.Instance != "" {
 			descContent = subAlert.Labels.Instance
+		} else if subAlert.Labels.MdcTxcClassKeyword != "" {
+			descContent = subAlert.Labels.MdcTxcClassKeyword
 		}
 
 		switch subAlert.Status {
