@@ -69,10 +69,26 @@ func printMap() {
 		time.Sleep(10 * time.Second)
 	}
 }
+
+const FIRING string = "firing"
+const RESOLVED string = "resolved"
+
 func main() {
 	//go printMap()
+	go checkState()
 	http.HandleFunc("/webhook", webhookHandle)
 	http.ListenAndServe(SERVPPORT, nil)
+}
+
+//告警状态补偿，每小时进行检查，对于没有及时更新告警状态的告警信息重置为解决状态。
+func checkState() {
+	for {
+		time.Sleep(time.Hour)
+		db.Model(&AlertLog{}).Where("status = ? AND update_time < now() - interval 30 minute", FIRING).Updates(map[string]interface{}{
+			"update_time": time.Now(),
+			"status":      RESOLVED,
+		})
+	}
 }
 
 type AlertLog struct {
@@ -185,7 +201,7 @@ func handleResolved(alertname, name, fingerPrint string) {
 	if exist {
 		db.Model(&AlertLog{}).Where("id = ?", serialNum).Updates(map[string]interface{}{
 			"update_time": time.Now(),
-			"status":      "resolved",
+			"status":      RESOLVED,
 		})
 	}
 	alertMap.DeleteAlert(fingerPrint)
@@ -201,7 +217,7 @@ func handleFiring(alertname, name, fingerPrint string) {
 			Name:        name,
 			Fingerprint: fingerPrint,
 			Count:       1,
-			Status:      "firing",
+			Status:      FIRING,
 			UpdateTime:  time.Now(),
 			CreateTime:  time.Now(),
 		}

@@ -3,7 +3,7 @@ version: '3.1'
 services:
   alertwebhook:
     container_name: alertwebhook
-    image: alertwebhook:0.5
+    image: alertwebhook:0.8
     build: ./
     ports:
       - 5001:5001
