@@ -17,13 +17,15 @@ import (
 )
 
 var (
-	db        *gorm.DB
-	DBNAME    string
-	DBUSER    string
-	DBPWD     string
-	DBHOST    string
-	SERVPPORT string
-	DEBUGFLAG string
+	db            *gorm.DB
+	DBNAME        string
+	DBUSER        string
+	DBPWD         string
+	DBHOST        string
+	SERVPPORT     string
+	DEBUGFLAG     string
+	ALERTLEVEL    string
+	alertLevelMap map[string]int
 )
 
 func init() {
@@ -39,6 +41,15 @@ func init() {
 	if DEBUGFLAG == "" {
 		DEBUGFLAG = "debug"
 	}
+	ALERTLEVEL = os.Getenv("alertwebhook_alertlevel")
+	alertLevelMap = make(map[string]int)
+	//alertlevel {"k8s-alert":2,"CPU-alert":1,"Memory-alert":3} alertname 是告警名称，level是告警级别 9 为最高级别
+	if err := json.Unmarshal([]byte(ALERTLEVEL), &alertLevelMap); err != nil {
+		fmt.Println(ALERTLEVEL)
+		fmt.Println(err)
+		panic("panic: alertlevel format is wrong")
+	}
+	fmt.Println("alertLevelMap is ", alertLevelMap)
 
 	if DBNAME == "" || DBHOST == "" || SERVPPORT == "" {
 		panic("ENV NOT SETTED")
@@ -94,6 +105,7 @@ func checkState() {
 type AlertLog struct {
 	Id          int       `json:"id" gorm:"id"`
 	Alertname   string    `json:"alertname" gorm:"alertname"`
+	Level       int       `json:"level" gorm:"level"`
 	Name        string    `json:"name" gorm:"name"`
 	Fingerprint string    `json:"fingerprint" gorm:"fingerprint"`
 	Count       int       `json:"count" gorm:"count"`
@@ -214,6 +226,7 @@ func handleFiring(alertname, name, fingerPrint string) {
 		alertMap.AddAlertflag(fingerPrint)
 		alert = AlertLog{
 			Alertname:   alertname,
+			Level:       alertLevelMap[alertname],
 			Name:        name,
 			Fingerprint: fingerPrint,
 			Count:       1,

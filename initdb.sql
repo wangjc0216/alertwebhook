@@ -3,6 +3,7 @@ use alertwebhook;
 create table if not exists  alertlog (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `alertname` varchar(512) DEFAULT NULL,
+  `level` int(11) DEFAULT NULL,
   `name` varchar(512) DEFAULT NULL,
   `fingerprint` varchar(32) DEFAULT NULL,
   `count` int(11) DEFAULT NULL,

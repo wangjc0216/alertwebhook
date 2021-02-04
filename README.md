@@ -3,6 +3,8 @@
 该Demo为对接Prometheus Alertmanager 的webhook。
 通过使用govendor进行依赖包管理。
 
+> alertwebhook_alertlevel为告警指标对应的告警级别，9为告警最高级，0为告警最低级，在发生告警风暴的时候可以根据不同的告警级别一次进行排障。
+
 ## 架构图
 ![architecture](architecture.png)
 
