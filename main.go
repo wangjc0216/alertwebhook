@@ -166,6 +166,7 @@ type alertInfo struct {
 			Alertname          string `json:"alertname"`
 			Name               string `json:"name"`
 			MdcTxcClassKeyword string `json:"mdc_txnClass_keyword"`
+			ThreadNameKeyword  string `json:"thread_name_keyword"`
 			Instance           string `json:"instance"`
 		} `json:"labels"`
 		FingerPrint string `json:"fingerprint"`
@@ -194,9 +195,14 @@ func webhookHandle(w http.ResponseWriter, req *http.Request) {
 		if subAlert.Labels.Name != "" {
 			descContent = subAlert.Labels.Name
 		} else if subAlert.Labels.Instance != "" {
+			//针对具体instance，其实prometheus可以通过label_replace来改变标签，使用一个name label就行
 			descContent = subAlert.Labels.Instance
 		} else if subAlert.Labels.MdcTxcClassKeyword != "" {
+			//针对具体接口
 			descContent = subAlert.Labels.MdcTxcClassKeyword
+		} else if subAlert.Labels.ThreadNameKeyword != "" {
+			//针对后台接口（数据库连接池啥的）报错
+			descContent = subAlert.Labels.ThreadNameKeyword
 		}
 
 		switch subAlert.Status {
