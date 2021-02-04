@@ -227,12 +227,17 @@ func handleResolved(alertname, name, fingerPrint string) {
 func handleFiring(alertname, name, fingerPrint string) {
 	exist, serialNum := alertMap.IfExists(fingerPrint)
 	var alert AlertLog
+	level, ok := alertLevelMap[alertname]
+	if !ok {
+		//没有注册默认为1
+		level = 1
+	}
 	//如果不存在，那么新增
 	if !exist {
 		alertMap.AddAlertflag(fingerPrint)
 		alert = AlertLog{
 			Alertname:   alertname,
-			Level:       alertLevelMap[alertname],
+			Level:       level,
 			Name:        name,
 			Fingerprint: fingerPrint,
 			Count:       1,
