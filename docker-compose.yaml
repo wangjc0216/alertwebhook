@@ -3,7 +3,7 @@ version: '3.1'
 services:
   alertwebhook:
     container_name: alertwebhook
-    image: alertwebhook:0.9
+    image: alertwebhook:1.0
     build: ./
     ports:
       - 5001:5001
@@ -13,7 +13,7 @@ services:
       - alertwebhook_servport=:5001
       - alertwebhook_dbuser=root
       - alertwebhook_dbpwd=root
-      - alertwebhook_alertlevel={"mysql-alert":1}
+      - alertwebhook_alertlevel={}
     depends_on:
       alertwebhook-mysql:
         condition: service_healthy
