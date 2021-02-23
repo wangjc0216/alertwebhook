@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -17,30 +18,33 @@ import (
 )
 
 var (
-	db            *gorm.DB
-	DBNAME        string
-	DBUSER        string
-	DBPWD         string
-	DBHOST        string
-	SERVPPORT     string
-	DEBUGFLAG     string
-	ALERTLEVEL    string
+	db *gorm.DB
+	//数据库名称
+	DBNAME string
+	//alert-mysql 用户，一般为在mysql中新增的用户monitor ，权限相较于root用户小很多，只可以读取有限的表和配置
+	DBUSER string
+	//alert-mysql 密码
+	DBPWD string
+	//alert-mysql 地址
+	DBHOST string
+	//webhook 端口
+	SERVPPORT string
+	//日志debug标记
+	DEBUGFLAG string
+	//告警级别配置信息（字符串）
+	ALERTLEVEL string
+	//告警级别配置map
 	alertLevelMap map[string]int
+	//重定向配置对应项
+	REDIRECTCFG string
+	//重定向配置对应Map
+	redirectMap map[string]string
+	//重定向地址
+	REDIRECTURL string
 )
 
-func init() {
-	var err error
-	//如 testdb
-	DBNAME = os.Getenv("alertwebhook_dbname")
-	//如 localhost:6666
-	DBHOST = os.Getenv("alertwebhook_dbhost")
-	DBUSER = os.Getenv("alertwebhook_dbuser")
-	DBPWD = os.Getenv("alertwebhook_dbpwd")
-	SERVPPORT = os.Getenv("alertwebhook_servport")
-	DEBUGFLAG = os.Getenv("alertwebhook_debugflag")
-	if DEBUGFLAG == "" {
-		DEBUGFLAG = "debug"
-	}
+//加载告警级别配置
+func loadAlertLevelCfg() {
 	ALERTLEVEL = os.Getenv("alertwebhook_alertlevel")
 	alertLevelMap = make(map[string]int)
 	//alertlevel {"k8s-alert":2,"CPU-alert":1,"Memory-alert":3} alertname 是告警名称，level是告警级别 9 为最高级别
@@ -50,12 +54,36 @@ func init() {
 		panic("panic: alertlevel format is wrong")
 	}
 	fmt.Println("alertLevelMap is ", alertLevelMap)
+}
 
-	if DBNAME == "" || DBHOST == "" || SERVPPORT == "" {
+//加载重定向配置信息
+func loadRedirectCfg() {
+	REDIRECTCFG = os.Getenv("alertwebhook_redirectconfig")
+	if REDIRECTCFG == "" {
+		REDIRECTCFG = "{}"
+	}
+	redirectMap = make(map[string]string)
+	//alertlevel {"k8s-alert":2,"CPU-alert":1,"Memory-alert":3} alertname 是告警名称，level是告警级别 9 为最高级别
+	if err := json.Unmarshal([]byte(REDIRECTCFG), &redirectMap); err != nil {
+		fmt.Println(REDIRECTCFG)
+		fmt.Println(err)
+		panic("panic: redirectfg format is wrong")
+	}
+	fmt.Println("redirectMap is ", redirectMap)
+}
+
+//将服务启动时的告警数据状态加载到内存中
+func loadStorageState() {
+	//如 testdb
+	DBNAME = os.Getenv("alertwebhook_dbname")
+	//如 localhost:6666
+	DBHOST = os.Getenv("alertwebhook_dbhost")
+	DBUSER = os.Getenv("alertwebhook_dbuser")
+	DBPWD = os.Getenv("alertwebhook_dbpwd")
+	if DBNAME == "" || DBHOST == "" {
 		panic("ENV NOT SETTED")
 	}
-	db, err = gorm.Open(mysql.New(mysql.Config{
-
+	db, err := gorm.Open(mysql.New(mysql.Config{
 		DSN: fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local",
 			DBUSER, DBPWD, DBHOST, DBNAME),
 	}), &gorm.Config{})
@@ -70,6 +98,23 @@ func init() {
 		alertMap.existedMap[a.Alertname] = true
 		alertMap.serialMap[a.Alertname] = a.Id
 	}
+}
+
+func init() {
+	SERVPPORT = os.Getenv("alertwebhook_servport")
+	DEBUGFLAG = os.Getenv("alertwebhook_debugflag")
+	if DEBUGFLAG == "" {
+		DEBUGFLAG = "debug"
+	}
+	//加载告警级别
+	loadAlertLevelCfg()
+	if SERVPPORT == "" {
+		panic("ENV NOT SETTED")
+	}
+	//将持久化的告警信息加载到内存中
+	loadStorageState()
+	//加载重定向配置信息
+	loadRedirectCfg()
 }
 func printMap() {
 	for {
@@ -87,7 +132,12 @@ const RESOLVED string = "resolved"
 func main() {
 	//go printMap()
 	go checkState()
+	//alertmanager 配置的webhook接口
 	http.HandleFunc("/webhook", webhookHandle)
+	//告警信息跳转到具体监控面板时的重定向接口
+	http.HandleFunc("/redirect", redirectHandler)
+	//热加载接口，重新加载告警信息级别配置和重定向配置
+	//http.HandleFunc("/-/reload", reloadHandler)
 	http.ListenAndServe(SERVPPORT, nil)
 }
 
@@ -254,4 +304,25 @@ func handleFiring(alertname, name, fingerPrint string) {
 			"update_time": time.Now(),
 		})
 	}
+}
+
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	values, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		fmt.Println("request uri is wrong,error is ", err)
+		return
+	}
+	alertname := values.Get("alertname")
+	fmt.Println("alertname:", alertname)
+	if redirectMap[alertname] == "" {
+		fmt.Println("error ,alertname has no regular redirecturl")
+		return
+	}
+	url := fmt.Sprintf("%s/%s", REDIRECTURL, redirectMap[alertname])
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
+}
+
+func reloadHandler(w http.ResponseWriter, r *http.Request) {
+	loadAlertLevelCfg()
+	loadRedirectCfg()
 }

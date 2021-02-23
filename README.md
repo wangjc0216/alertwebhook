@@ -18,7 +18,7 @@ git pull git@github.com:wangjc0216/alertwebhook.git
 **2. 通过Dockerfile在本地构建alertwebhook镜像**
 
 ```shell
-docker build -t alertwebhook:1.0 .
+docker build -t alertwebhook:1.1 .
 ```
 **3.docker-compose 部署**
 
