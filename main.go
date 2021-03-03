@@ -74,6 +74,7 @@ func loadRedirectCfg() {
 
 //将服务启动时的告警数据状态加载到内存中
 func loadStorageState() {
+	var err error
 	//如 testdb
 	DBNAME = os.Getenv("alertwebhook_dbname")
 	//如 localhost:6666
@@ -83,7 +84,7 @@ func loadStorageState() {
 	if DBNAME == "" || DBHOST == "" {
 		panic("ENV NOT SETTED")
 	}
-	db, err := gorm.Open(mysql.New(mysql.Config{
+	db, err = gorm.Open(mysql.New(mysql.Config{
 		DSN: fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local",
 			DBUSER, DBPWD, DBHOST, DBNAME),
 	}), &gorm.Config{})
